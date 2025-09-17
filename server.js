@@ -156,24 +156,29 @@ await connectCloudinary();
 // ✅ JSON middleware
 app.use(express.json());
 
-// ✅ CORS configuration
-const corsOptions = {
-  origin: "https://nexa-ai-neon-yogesh.vercel.app",
-  credentials: true,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
+// ✅ CORS middleware
+const FRONTEND_URL = "https://nexa-ai-neon-yogesh.vercel.app";
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-// ✅ Apply CORS globally
-app.use(cors(corsOptions));
-
-// ✅ Handle preflight OPTIONS for all routes
-app.options("*", cors(corsOptions));
+// ✅ Preflight handler (OPTIONS requests)
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return res.sendStatus(200);
+});
 
 // ✅ Clerk middleware
 app.use(clerkMiddleware());
 
-// ✅ Debug logs in development
+// ✅ Debug logs
 if (process.env.NODE_ENV === "development") {
   app.use((req, res, next) => {
     console.log("➡️", req.method, req.url, "Auth:", req.auth);
@@ -184,13 +189,18 @@ if (process.env.NODE_ENV === "development") {
 // ✅ Public route
 app.get("/", (req, res) => res.send("Server is running"));
 
-// ✅ Middleware to skip auth only for OPTIONS requests
-const conditionalAuth = (req, res, next) => {
-  if (req.method === "OPTIONS") return next(); // just continue for preflight
-  return requireAuth()(req, res, next);
+// ✅ Middleware to skip auth/multer for OPTIONS requests
+const skipForOptions = (middleware) => (req, res, next) => {
+  if (req.method === "OPTIONS") return next();
+  return middleware(req, res, next);
 };
 
 // ✅ Protected AI routes
-app.use("/api/ai", conditionalAuth, auth, aiRouter);
+app.use(
+  "/api/ai",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
+  aiRouter
+);
 
 export default app;
