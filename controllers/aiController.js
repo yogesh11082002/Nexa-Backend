@@ -280,71 +280,132 @@ export const generateBlogTitle = async (req, res) => {
   }
 };
 
+
+// export const generateImage = async (req, res) => {
+//   try {
+//     const { userId } = req.auth;
+//     const { topic , publish } = req.body;
+//     const plan = req.plan;
+
+//     if (!userId)
+//       return res.status(401).json({ success: false, error: "Unauthorized" });
+//     if (!topic) return res.json({ success: false, error: "Missing topic" });
+//     if (plan !== "premium" ) {
+//       return res
+//         .status(403)
+//         .json({
+//           success: false,
+//           error: " Only For Premium user. Upgrade to premium.",
+//         });
+//     }
+
+//     const prompt = ` Create an Image Of  "${topic}" `;
+
+  
+// const form = new FormData()
+// form.append('prompt', prompt)
+
+// //    const {data} = await axios.post('https://clipdrop-api.co/text-to-image/v1', {
+// //   headers: {
+// //     'x-api-key': process.env.CLIPDROP_API_KEY,
+// //   },
+// //  responseType: 'arraybuffer',
+// // })
+
+// const { data } = await axios.post(
+//   "https://clipdrop-api.co/text-to-image/v1",
+//   form, // ✅ send the form with the prompt
+//   {
+//     headers: {
+//       "x-api-key": process.env.CLIPDROP_API_KEY,
+//       ...form.getHeaders(), // ✅ ensures proper multipart headers
+//     },
+//     responseType: "arraybuffer", // ✅ needed for binary image data
+//   }
+// );
+
+  
+// const base64Image = `data:image/png;base64,${Buffer.from(data, 'binary').toString('base64')}`
+
+//   const {secure_url} =  await cloudinary.uploader.upload(base64Image);
+
+
+
+//     // ✅ Save in DB
+//     await db`
+//       INSERT INTO creations (user_id, prompt, content, type, publish)
+//       VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
+//     `.catch((err) => console.error("DB insert failed:", err));
+
+   
+//  res.json({ success: true, image: secure_url });
+
+//   } catch (err) {
+//     console.error("❌ Image generation error:", err);
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// };
+
+
 export const generateImage = async (req, res) => {
   try {
     const { userId } = req.auth;
-    const { topic , publish } = req.body;
-    const plan = req.plan;
+    const { topic, publish } = req.body;
+    const plan = req.plan || "free";
 
-    if (!userId)
+    if (!userId) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
-    if (!topic) return res.json({ success: false, error: "Missing topic" });
-    if (plan !== "premium" ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: " Only For Premium user. Upgrade to premium.",
-        });
+    }
+    if (!topic) {
+      return res.json({ success: false, error: "Missing topic" });
+    }
+    if (plan !== "premium") {
+      return res.status(403).json({
+        success: false,
+        error: "Only for Premium users. Upgrade to premium.",
+      });
     }
 
-    const prompt = ` Create an Image Of  "${topic}" `;
+    // Build prompt for ClipDrop
+    const prompt = `Create an image of "${topic}"`;
 
-  
-const form = new FormData()
-form.append('prompt', prompt)
+    // FormData request for ClipDrop API
+    const form = new FormData();
+    form.append("prompt", prompt);
 
-//    const {data} = await axios.post('https://clipdrop-api.co/text-to-image/v1', {
-//   headers: {
-//     'x-api-key': process.env.CLIPDROP_API_KEY,
-//   },
-//  responseType: 'arraybuffer',
-// })
+    const { data } = await axios.post(
+      "https://clipdrop-api.co/text-to-image/v1",
+      form,
+      {
+        headers: {
+          "x-api-key": process.env.CLIPDROP_API_KEY,
+          ...form.getHeaders(),
+        },
+        responseType: "arraybuffer",
+      }
+    );
 
-const { data } = await axios.post(
-  "https://clipdrop-api.co/text-to-image/v1",
-  form, // ✅ send the form with the prompt
-  {
-    headers: {
-      "x-api-key": process.env.CLIPDROP_API_KEY,
-      ...form.getHeaders(), // ✅ ensures proper multipart headers
-    },
-    responseType: "arraybuffer", // ✅ needed for binary image data
-  }
-);
+    // Convert to base64
+    const base64Image = `data:image/png;base64,${Buffer.from(data, "binary").toString("base64")}`;
 
-  
-const base64Image = `data:image/png;base64,${Buffer.from(data, 'binary').toString('base64')}`
+    // Upload to Cloudinary
+    const { secure_url } = await cloudinary.uploader.upload(base64Image);
 
-  const {secure_url} =  await cloudinary.uploader.upload(base64Image);
-
-
-
-    // ✅ Save in DB
-    await db`
+    // ✅ Save to DB
+    db`
       INSERT INTO creations (user_id, prompt, content, type, publish)
       VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
     `.catch((err) => console.error("DB insert failed:", err));
 
-   
- res.json({ success: true, image: secure_url });
-
+    // ✅ Return response in same structure as blog titles
+    res.json({
+      success: true,
+      image: secure_url, // 👈 consistent key
+    });
   } catch (err) {
     console.error("❌ Image generation error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
-
 
 
