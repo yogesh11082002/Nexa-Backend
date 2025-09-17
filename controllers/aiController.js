@@ -405,7 +405,7 @@ export const generateArticle = async (req, res) => {
     if (!userId)
       return res.status(401).json({ success: false, error: "Unauthorized" });
     if (!topic) return res.json({ success: false, error: "Missing topic" });
-    if (plan !== "premium" && free_usage >= 10) {
+    if (plan !== "premium" && free_usage >= 15) {
       return res
         .status(403)
         .json({
@@ -414,7 +414,18 @@ export const generateArticle = async (req, res) => {
         });
     }
 
-    const prompt = `Write a detailed ${length} article about "${topic}" in around ${words}. Make it engaging and well-structured.`;
+    const prompt = `
+Write a detailed ${length} article about "${topic}" in around ${words}.
+- A big heading (<h1>) with the article title.
+- Include an introduction paragraph.
+- Use bold headings and subheadings (<h1>, <h2>, <h3>) for sections.
+- Include lists (<ul><li>) for steps, tips, and examples.
+- Include tips or examples in italic or bold where appropriate.
+- Use clear, simple language.
+- End with a conclusion.
+- Do NOT include outer <html>, <body>, or metadata tags.
+- Output clean HTML suitable for ReactMarkdown or ReactQuill with correct heading, list, and paragraph formatting.
+      `;
 
     // ✅ Gemini generate
     const result = await model.generateContent(prompt);
@@ -470,7 +481,7 @@ export const generateBlogTitle = async (req, res) => {
     if (!userId)
       return res.status(401).json({ success: false, error: "Unauthorized" });
     if (!topic) return res.json({ success: false, error: "Missing topic" });
-    if (plan !== "premium" && free_usage >= 10) {
+    if (plan !== "premium" && free_usage >= 15) {
       return res
         .status(403)
         .json({
@@ -479,7 +490,7 @@ export const generateBlogTitle = async (req, res) => {
         });
     }
 
-    const prompt = `Suggest 5 catchy blog titles for: "${topic}"`;
+    const prompt = `Suggest 5  Blog titles for: "${topic}" With headings in bold and Bigger`;
 
     // ✅ Gemini generate
     const result = await model.generateContent(prompt);
