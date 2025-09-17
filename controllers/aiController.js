@@ -353,7 +353,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import db from "../configs/db.js";
 import { clerkClient } from "@clerk/express";
-import { model, extractText } from "../utils/gemini.js";
 
 // ✅ Setup Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -388,147 +387,69 @@ const extractText = (result) => {
 
 /**
  * Generate Article
-//  */
-// export const generateArticle = async (req, res) => {
-//   // console.log("🔥 generateArticle called with:", req.body);
-//   // console.log("Auth object:", req.auth()); // ← This shows Clerk auth info
-//   // console.log("Request body:", req.body);
-//   console.log("REQ AUTH:", req.auth); // check if userId exists
-//   if (!req.auth || !req.auth.userId) {
-//     return res.status(401).json({ success: false, error: "Unauthorized" });
-//   }
-//   try {
-//     const { userId } = req.auth;
-//     const { topic, length, words } = req.body;
-//     const plan = req.plan || "free";
-//     const free_usage = req.free_usage || 0;
-
-//     if (!userId)
-//       return res.status(401).json({ success: false, error: "Unauthorized" });
-//     if (!topic) return res.json({ success: false, error: "Missing topic" });
-//     if (plan !== "premium" && free_usage >= 10) {
-//       return res
-//         .status(403)
-//         .json({
-//           success: false,
-//           error: "Free usage limit exceeded. Upgrade to premium.",
-//         });
-//     }
-
-//     const prompt = `Write a detailed ${length} article about "${topic}" in around ${words}. Make it engaging and well-structured.`;
-
-//     // ✅ Gemini generate
-//     const result = await model.generateContent(prompt);
-
-//     console.log("🔎 Gemini raw result:", JSON.stringify(result, null, 2));
-
-//     const text = extractText(result);
-
-//     if (!text) {
-//       return res
-//         .status(502)
-//         .json({ success: false, error: "⚠️ No article received from API." });
-//     }
-
-//     // ✅ Save in DB
-//     db`
-//       INSERT INTO creations (user_id, prompt, content, type)
-//       VALUES (${userId}, ${prompt}, ${text}, 'article')
-//     `.catch((err) => console.error("DB insert failed:", err));
-
-//     // ✅ Update free usage
-//     if (plan !== "premium") {
-//       try {
-//         const user = await clerkClient.users.getUser(userId);
-//         await clerkClient.users.updateUserMetadata(userId, {
-//           privateMetadata: {
-//             ...user.privateMetadata,
-//             free_usage: free_usage + 1,
-//           },
-//         });
-//       } catch (err) {
-//         console.warn("⚠️ Failed to update Clerk metadata:", err.message);
-//       }
-//     }
-
-//     res.json({ success: true, article: text });
-//   } catch (err) {
-//     console.error("❌ Article generation error:", err);
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// };
-
+ */
 export const generateArticle = async (req, res) => {
+  // console.log("🔥 generateArticle called with:", req.body);
+  // console.log("Auth object:", req.auth()); // ← This shows Clerk auth info
+  // console.log("Request body:", req.body);
+  console.log("REQ AUTH:", req.auth); // check if userId exists
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
   try {
-    // ✅ Check Clerk auth
-    if (!req.auth || !req.auth.userId) {
-      return res.status(401).json({ success: false, error: "Unauthorized" });
-    }
     const { userId } = req.auth;
+    const { topic, length, words } = req.body;
+    const plan = req.plan || "free";
+    const free_usage = req.free_usage || 0;
 
-    // ✅ Extract request body safely
-    const { topic, length = "Short", words } = req.body;
-
-    if (!topic || topic.trim() === "") {
-      return res.status(400).json({ success: false, error: "Missing topic" });
-    }
-
-    // ✅ Retrieve plan and free usage from metadata
-    const user = await clerkClient.users.getUser(userId);
-    const plan = user.privateMetadata?.plan || "free";
-    const free_usage = user.privateMetadata?.free_usage || 0;
-
+    if (!userId)
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (!topic) return res.json({ success: false, error: "Missing topic" });
     if (plan !== "premium" && free_usage >= 10) {
-      return res.status(403).json({
-        success: false,
-        error: "Free usage limit exceeded. Upgrade to premium.",
-      });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Free usage limit exceeded. Upgrade to premium.",
+        });
     }
 
-    // ✅ Build AI prompt with proper HTML formatting
-    const prompt = `
-Write a detailed ${length} article on "${topic}" in around ${words}.
-- Use <h1> for the title, <h2> for sections, <h3> for sub-sections.
-- Wrap paragraphs in <p> tags.
-- Include <ul> or <ol> for lists and bullet points.
-- Use bold (<b>) and italic (<i>) where appropriate.
-- End with <h2>Conclusion</h2> section.
-- Do not include <html>, <body>, or metadata tags.
-- Output clean HTML suitable for ReactMarkdown with rehype-raw.
-`;
+    const prompt = `Write a detailed ${length} article about "${topic}" in around ${words}. Make it engaging and well-structured.`;
 
-    // ✅ Generate article using Gemini
+    // ✅ Gemini generate
     const result = await model.generateContent(prompt);
+
     console.log("🔎 Gemini raw result:", JSON.stringify(result, null, 2));
 
     const text = extractText(result);
 
     if (!text) {
-      return res.status(502).json({ success: false, error: "No article received from API." });
+      return res
+        .status(502)
+        .json({ success: false, error: "⚠️ No article received from API." });
     }
 
-    // ✅ Save article in DB
-    try {
-      await db`
-        INSERT INTO creations (user_id, prompt, content, type)
-        VALUES (${userId}, ${prompt}, ${text}, 'article')
-      `;
-    } catch (dbErr) {
-      console.error("DB insert failed:", dbErr.message);
-    }
+    // ✅ Save in DB
+    db`
+      INSERT INTO creations (user_id, prompt, content, type)
+      VALUES (${userId}, ${prompt}, ${text}, 'article')
+    `.catch((err) => console.error("DB insert failed:", err));
 
-    // ✅ Update free usage for non-premium users
+    // ✅ Update free usage
     if (plan !== "premium") {
       try {
+        const user = await clerkClient.users.getUser(userId);
         await clerkClient.users.updateUserMetadata(userId, {
-          privateMetadata: { ...user.privateMetadata, free_usage: free_usage + 1 },
+          privateMetadata: {
+            ...user.privateMetadata,
+            free_usage: free_usage + 1,
+          },
         });
       } catch (err) {
-        console.warn("Failed to update Clerk metadata:", err.message);
+        console.warn("⚠️ Failed to update Clerk metadata:", err.message);
       }
     }
 
-    // ✅ Return generated article
     res.json({ success: true, article: text });
   } catch (err) {
     console.error("❌ Article generation error:", err);
@@ -600,4 +521,7 @@ export const generateBlogTitle = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+
 
