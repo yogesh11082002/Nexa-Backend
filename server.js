@@ -132,6 +132,6 @@ app.get("/", (req, res) => {
 // ✅ Protected AI routes
 // app.use("/api/ai", requireAuth(), auth, aiRouter);
 
-app.use("/api/ai", aiRouter);
+app.use("/api/ai", requireAuth(), auth, aiRouter);
 
 export default app;
