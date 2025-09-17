@@ -140,25 +140,21 @@
 
 // export default app;
 
-import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { clerkMiddleware, requireAuth } from "@clerk/express";
+import { clerkMiddleware } from "@clerk/express";
 import aiRouter from "./routes/aiRoutes.js";
-import { auth } from "./middlewares/auth.js";
 import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
-
-// ✅ Connect Cloudinary
 await connectCloudinary();
 
-// ✅ JSON middleware
-app.use(express.json());
-
-// ✅ CORS configuration
 const FRONTEND_URL = "https://nexa-ai-neon-yogesh.vercel.app";
 
+// ✅ JSON parser
+app.use(express.json());
+
+// ✅ Global CORS middleware
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -168,24 +164,16 @@ app.use(
   })
 );
 
-// ✅ Handle preflight globally
+// ✅ Preflight OPTIONS handler
 app.options("*", cors());
 
 // ✅ Clerk middleware
 app.use(clerkMiddleware());
 
-// ✅ Debug logs (optional)
-if (process.env.NODE_ENV === "development") {
-  app.use((req, res, next) => {
-    console.log("➡️", req.method, req.url, "Auth:", req.auth);
-    next();
-  });
-}
-
 // ✅ Public route
 app.get("/", (req, res) => res.send("Server is running"));
 
-// ✅ Protected AI routes
+// ✅ AI routes
 app.use("/api/ai", aiRouter);
 
 export default app;

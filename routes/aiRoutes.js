@@ -37,24 +37,37 @@
 // aiRouter.post("/remove-object",upload.single("image") , removeImageObject);
 
 // export default aiRouter;
+
 import express from "express";
 import upload from "../configs/multer.js";
 import { removeImageBackground, removeImageObject, generateArticle, generateBlogTitle, generateImage } from "../controllers/aiController.js";
 import { auth } from "../middlewares/auth.js";
 import { requireAuth } from "@clerk/express";
+import { skipForOptions } from "../utils/skipForOptions.js";
 
 const aiRouter = express.Router();
 
-// ✅ Middleware to skip other middleware on OPTIONS requests
-const skipForOptions = (middleware) => (req, res, next) => {
-  if (req.method === "OPTIONS") return next();
-  return middleware(req, res, next);
-};
+// AI routes
+aiRouter.post(
+  "/generate-article",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
+  generateArticle
+);
 
-// ✅ AI routes
-aiRouter.post("/generate-article", skipForOptions(requireAuth()), skipForOptions(auth), generateArticle);
-aiRouter.post("/generate-blog-title", skipForOptions(requireAuth()), skipForOptions(auth), generateBlogTitle);
-aiRouter.post("/generate-image", skipForOptions(requireAuth()), skipForOptions(auth), generateImage);
+aiRouter.post(
+  "/generate-blog-title",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
+  generateBlogTitle
+);
+
+aiRouter.post(
+  "/generate-image",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
+  generateImage
+);
 
 aiRouter.post(
   "/remove-background",
