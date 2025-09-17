@@ -28,6 +28,7 @@
 // };
 
 // middlewares/auth.js
+
 import { clerkClient } from "@clerk/express";
 
 export const auth = async (req, res, next) => {
