@@ -158,15 +158,16 @@ app.use(express.json());
 
 // ✅ CORS configuration
 const corsOptions = {
-  origin: "https://nexa-ai-neon-yogesh.vercel.app", // your frontend URL
+  origin: "https://nexa-ai-neon-yogesh.vercel.app",
   credentials: true,
   methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// Apply CORS to all requests
+// ✅ Apply CORS globally
 app.use(cors(corsOptions));
 
-// Handle preflight OPTIONS globally
+// ✅ Handle preflight OPTIONS for all routes
 app.options("*", cors(corsOptions));
 
 // ✅ Clerk middleware
@@ -183,13 +184,13 @@ if (process.env.NODE_ENV === "development") {
 // ✅ Public route
 app.get("/", (req, res) => res.send("Server is running"));
 
-// ✅ Middleware to skip auth for OPTIONS requests
-const skipAuthForOptions = (req, res, next) => {
-  if (req.method === "OPTIONS") return res.sendStatus(200);
-  next();
+// ✅ Middleware to skip auth only for OPTIONS requests
+const conditionalAuth = (req, res, next) => {
+  if (req.method === "OPTIONS") return next(); // just continue for preflight
+  return requireAuth()(req, res, next);
 };
 
-// ✅ Protected AI routes (Clerk auth + custom auth)
-app.use("/api/ai", skipAuthForOptions, requireAuth(), auth, aiRouter);
+// ✅ Protected AI routes
+app.use("/api/ai", conditionalAuth, auth, aiRouter);
 
 export default app;
