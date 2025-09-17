@@ -350,6 +350,7 @@
 //   }
 // };
 
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import db from "../configs/db.js";
 import { clerkClient } from "@clerk/express";
@@ -389,10 +390,8 @@ const extractText = (result) => {
  * Generate Article
  */
 export const generateArticle = async (req, res) => {
-  // console.log("🔥 generateArticle called with:", req.body);
-  // console.log("Auth object:", req.auth()); // ← This shows Clerk auth info
-  // console.log("Request body:", req.body);
-  console.log("REQ AUTH:", req.auth); // check if userId exists
+
+  console.log("REQ AUTH:", req.auth); 
   if (!req.auth || !req.auth.userId) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
@@ -400,7 +399,7 @@ export const generateArticle = async (req, res) => {
     const { userId } = req.auth;
     const { topic, length, words } = req.body;
     const plan = req.plan;
-    const free_usage = req.free_usage || 0;
+    const free_usage = req.free_usage ;
 
     if (!userId)
       return res.status(401).json({ success: false, error: "Unauthorized" });
