@@ -399,7 +399,7 @@ export const generateArticle = async (req, res) => {
   try {
     const { userId } = req.auth;
     const { topic, length, words } = req.body;
-    const plan = req.plan || "free";
+    const plan = req.plan;
     const free_usage = req.free_usage || 0;
 
     if (!userId)
