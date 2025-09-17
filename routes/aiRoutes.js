@@ -25,13 +25,14 @@
 
 
 import express from "express";
-import { generateArticle, generateBlogTitle } from "../controllers/aiController.js";
+import { generateArticle, generateBlogTitle, generateImage } from "../controllers/aiController.js";
 
 const aiRouter = express.Router();
 
 // ✅ No auth here, already applied in server.js
 aiRouter.post("/generate-article", generateArticle);
 aiRouter.post("/generate-blog-title", generateBlogTitle);
+aiRouter.post("/generate-image", generateImage);
 
 export default aiRouter;
 
