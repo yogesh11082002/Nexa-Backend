@@ -130,7 +130,8 @@ app.get("/", (req, res) => {
 });
 
 // ✅ Protected AI routes
-app.use("/api/ai", requireAuth(), auth, aiRouter);
+// app.use("/api/ai", requireAuth(), auth, aiRouter);
 
-// ❌ Remove app.listen() — Vercel handles it
+app.use("/api/ai", aiRouter);
+
 export default app;
