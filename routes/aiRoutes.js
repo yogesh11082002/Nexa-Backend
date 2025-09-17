@@ -25,7 +25,7 @@
 
 
 import express from "express";
-import { generateArticle, generateBlogTitle, generateImage } from "../controllers/aiController.js";
+import { generateArticle, generateBlogTitle, generateImage, removeImageBackground, removeImageObject } from "../controllers/aiController.js";
 
 const aiRouter = express.Router();
 
@@ -33,6 +33,8 @@ const aiRouter = express.Router();
 aiRouter.post("/generate-article", generateArticle);
 aiRouter.post("/generate-blog-title", generateBlogTitle);
 aiRouter.post("/generate-image", generateImage);
+aiRouter.post("/remove-background", removeImageBackground);
+aiRouter.post("/remove-object", removeImageObject);
 
 export default aiRouter;
 
