@@ -37,40 +37,39 @@
 // aiRouter.post("/remove-object",upload.single("image") , removeImageObject);
 
 // export default aiRouter;
-
 import express from "express";
 import upload from "../configs/multer.js";
-import {
-  generateArticle,
-  generateBlogTitle,
-  generateImage,
-  removeImageBackground,
-  removeImageObject,
-} from "../controllers/aiController.js";
-import { skipForOptions } from "../middlewares/skipForOptions.js";
+import { removeImageBackground, removeImageObject, generateArticle, generateBlogTitle, generateImage } from "../controllers/aiController.js";
+import { auth } from "../middlewares/auth.js";
+import { requireAuth } from "@clerk/express";
 
 const aiRouter = express.Router();
 
-// ✅ Article and image routes
-aiRouter.post("/generate-article", generateArticle);
-aiRouter.post("/generate-blog-title", generateBlogTitle);
-aiRouter.post("/generate-image", generateImage);
+// ✅ Middleware to skip other middleware on OPTIONS requests
+const skipForOptions = (middleware) => (req, res, next) => {
+  if (req.method === "OPTIONS") return next();
+  return middleware(req, res, next);
+};
 
-// ✅ Skip multer for OPTIONS, but use for POST
-import { skipForOptions } from "../middlewares/skipForOptions.js"; // create this helper
+// ✅ AI routes
+aiRouter.post("/generate-article", skipForOptions(requireAuth()), skipForOptions(auth), generateArticle);
+aiRouter.post("/generate-blog-title", skipForOptions(requireAuth()), skipForOptions(auth), generateBlogTitle);
+aiRouter.post("/generate-image", skipForOptions(requireAuth()), skipForOptions(auth), generateImage);
 
 aiRouter.post(
   "/remove-background",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
   skipForOptions(upload.single("image")),
   removeImageBackground
 );
 
 aiRouter.post(
   "/remove-object",
+  skipForOptions(requireAuth()),
+  skipForOptions(auth),
   skipForOptions(upload.single("image")),
   removeImageObject
 );
 
 export default aiRouter;
-
-

@@ -150,14 +150,15 @@ import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
 
-// Connect Cloudinary
+// ✅ Connect Cloudinary
 await connectCloudinary();
 
 // ✅ JSON middleware
 app.use(express.json());
 
-// ✅ CORS middleware
+// ✅ CORS configuration
 const FRONTEND_URL = "https://nexa-ai-neon-yogesh.vercel.app";
+
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -167,18 +168,13 @@ app.use(
   })
 );
 
-// ✅ Preflight handler (OPTIONS requests)
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return res.sendStatus(200);
-});
+// ✅ Handle preflight globally
+app.options("*", cors());
 
 // ✅ Clerk middleware
 app.use(clerkMiddleware());
 
-// ✅ Debug logs
+// ✅ Debug logs (optional)
 if (process.env.NODE_ENV === "development") {
   app.use((req, res, next) => {
     console.log("➡️", req.method, req.url, "Auth:", req.auth);
@@ -189,18 +185,7 @@ if (process.env.NODE_ENV === "development") {
 // ✅ Public route
 app.get("/", (req, res) => res.send("Server is running"));
 
-// ✅ Middleware to skip auth/multer for OPTIONS requests
-const skipForOptions = (middleware) => (req, res, next) => {
-  if (req.method === "OPTIONS") return next();
-  return middleware(req, res, next);
-};
-
 // ✅ Protected AI routes
-app.use(
-  "/api/ai",
-  skipForOptions(requireAuth()),
-  skipForOptions(auth),
-  aiRouter
-);
+app.use("/api/ai", aiRouter);
 
 export default app;
