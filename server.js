@@ -150,14 +150,15 @@ import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
 
+// Connect Cloudinary
 await connectCloudinary();
 
 // ✅ JSON middleware
 app.use(express.json());
 
-// ✅ CORS middleware
+// ✅ CORS configuration
 const corsOptions = {
-  origin: "https://nexa-ai-neon-yogesh.vercel.app",
+  origin: "https://nexa-ai-neon-yogesh.vercel.app", // your frontend URL
   credentials: true,
   methods: ["GET", "POST", "OPTIONS"],
 };
@@ -165,13 +166,13 @@ const corsOptions = {
 // Apply CORS to all requests
 app.use(cors(corsOptions));
 
-// Handle preflight OPTIONS for all routes
+// Handle preflight OPTIONS globally
 app.options("*", cors(corsOptions));
 
 // ✅ Clerk middleware
 app.use(clerkMiddleware());
 
-// ✅ Debug logs
+// ✅ Debug logs in development
 if (process.env.NODE_ENV === "development") {
   app.use((req, res, next) => {
     console.log("➡️", req.method, req.url, "Auth:", req.auth);
@@ -182,7 +183,13 @@ if (process.env.NODE_ENV === "development") {
 // ✅ Public route
 app.get("/", (req, res) => res.send("Server is running"));
 
-// ✅ Protected AI routes
-app.use("/api/ai", requireAuth(), auth, aiRouter);
+// ✅ Middleware to skip auth for OPTIONS requests
+const skipAuthForOptions = (req, res, next) => {
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+};
+
+// ✅ Protected AI routes (Clerk auth + custom auth)
+app.use("/api/ai", skipAuthForOptions, requireAuth(), auth, aiRouter);
 
 export default app;
