@@ -390,8 +390,12 @@ const extractText = (result) => {
  */
 export const generateArticle = async (req, res) => {
   // console.log("🔥 generateArticle called with:", req.body);
-  console.log("Auth object:", req.auth()); // ← This shows Clerk auth info
-  console.log("Request body:", req.body);
+  // console.log("Auth object:", req.auth()); // ← This shows Clerk auth info
+  // console.log("Request body:", req.body);
+  console.log("REQ AUTH:", req.auth); // check if userId exists
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
   try {
     const { userId } = req.auth;
     const { topic, length, words } = req.body;
