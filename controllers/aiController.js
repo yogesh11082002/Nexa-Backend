@@ -424,39 +424,36 @@ export const generateImage = async (req, res) => {
 // };
 
 
+
 export const removeImageBackground = async (req, res) => {
   try {
-    // ✅ Log auth info
+    console.log("=== REMOVE BACKGROUND ===");
     console.log("req.auth:", req.auth);
     console.log("req.plan:", req.plan);
+    console.log("req.file:", req.file);
 
-    // ✅ Check auth
-    const { userId } = req.auth || {};
-    const plan = req.plan;
-
-    if (!userId) {
-      console.error("Unauthorized: req.auth is missing");
+    // ✅ Auth check
+    if (!req.auth || !req.auth.userId) {
+      console.error("Unauthorized access");
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    if (plan !== "premium") {
-      console.error("Forbidden: Non-premium user");
-      return res.status(403).json({ success: false, error: "Only for Premium users." });
+    if (req.plan !== "premium") {
+      console.error("Non-premium user tried to remove background");
+      return res.status(403).json({ success: false, error: "Premium required" });
     }
 
-    // ✅ Check uploaded file
-    console.log("req.file:", req.file);
-    const image = req.file;
-    if (!image) {
-      console.error("No file received");
+    // ✅ File check
+    if (!req.file) {
+      console.error("No file uploaded");
       return res.status(400).json({ success: false, error: "No file received" });
     }
 
-    // ✅ Check user’s image count
+    // ✅ Count images
     const [{ count }] = await db`
       SELECT COUNT(*)::int AS count
       FROM creations
-      WHERE user_id = ${userId} AND type = 'image'
+      WHERE user_id = ${req.auth.userId} AND type = 'image'
     `;
 
     if (count >= 3) {
@@ -464,33 +461,37 @@ export const removeImageBackground = async (req, res) => {
       return res.status(403).json({ success: false, error: "You’ve reached your 3-image limit." });
     }
 
-    // ✅ Upload to Cloudinary
-    let secure_url;
-    try {
-      console.log("Uploading to Cloudinary...");
-      const result = await cloudinary.uploader.upload(image.path, {
-        transformation: [{ effect: "background_removal" }],
+    // ✅ Upload to Cloudinary using upload_stream
+    console.log("Uploading file to Cloudinary...");
+
+    const streamUpload = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { transformation: [{ effect: "background_removal" }] },
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload_stream error:", error);
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        );
+        stream.end(fileBuffer); // send file buffer to Cloudinary
       });
-      secure_url = result.secure_url;
-      console.log("Cloudinary upload success:", secure_url);
-    } catch (err) {
-      console.error("Cloudinary upload error:", err);
-      return res.status(500).json({ success: false, error: "Cloudinary upload failed" });
-    }
+    };
+
+    const result = await streamUpload(req.file.buffer);
+    const secure_url = result.secure_url;
+    console.log("Cloudinary result:", secure_url);
 
     // ✅ Save to DB
     await db`
       INSERT INTO creations (user_id, prompt, content, type)
-      VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')
+      VALUES (${req.auth.userId}, 'Remove background from image', ${secure_url}, 'image')
     `;
 
-    // ✅ Delete local temp file
-    fs.unlink(image.path, (err) => {
-      if (err) console.error("Failed to delete temp file:", err);
-      else console.log("Temp file deleted:", image.path);
-    });
-
-    // ✅ Respond
+    console.log("Success! Sending response...");
     res.json({
       success: true,
       image: secure_url,
@@ -498,8 +499,8 @@ export const removeImageBackground = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Image background removal error:", err.stack || err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("Unexpected error:", err.stack || err);
+    res.status(500).json({ success: false, error: "Unexpected server error" });
   }
 };
 
