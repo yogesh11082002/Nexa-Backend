@@ -13,51 +13,67 @@ export  const getUserCreations = async (req ,res)=>{
         res.json({success:false , error : error.message})
     }
 }
+export const getPublishedCreations = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+
+    const creations =
+      await db`SELECT * FROM creations WHERE publish = true ORDER BY created_at DESC`;
+
+    // map with liked + like count
+    const enriched = creations.map((c) => {
+      const likesArr = c.likes || [];
+      return {
+        ...c,
+        likeCount: likesArr.length,
+        liked: likesArr.includes(userId.toString()), // ✅ check if this user liked
+      };
+    });
+
+    res.json({ success: true, creations: enriched });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+};
 
 
-export  const getPublishedCreations = async (req ,res)=>{
 
-    try {
-      
-        const creations = await db`SELECT * FROM creations WHERE publish = true ORDER BY created_at DESC`;
-        res.json({success:true , creations});
+export const toggleLikeCreation = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    const { id } = req.body;
 
-        res.json({success:true , creations})
-    } catch (error) {
-        res.json({success:false , error : error.message})
+    const [creation] = await db`SELECT * FROM creations WHERE id = ${id}`;
+    if (!creation) {
+      return res.json({ success: false, error: "Creation not found" });
     }
-}
 
-export  const toggleLikeCreation = async (req ,res)=>{
+    const currentLikes = creation.likes || [];
+    const userIdStr = userId.toString();
 
-    try {
-      
-       const {userId} = req.auth;
-       const {id} =req.body;
+    let updatedLikes;
+    let message;
 
-        const [creation]= await db`SELECT * FROM creations WHERE id = ${id}`;
-        if(!creation) return res.json({success:false , error : "Creation not found"})
-
-        const currentLikes = creation.likes;
-        const userIdstr = userId.toString();
-        let updatedLikes;
-        let message;
-        if(currentLikes.includes(userIdstr)){
-            //unlike
-            updatedLikes = currentLikes.filter((user)=> user !== userIdstr);
-            message = "Creation unliked"
-        }
-        else{
-            //like
-            updatedLikes = [...currentLikes , userIdstr];
-            message = "Creation liked"
-        }
-        const  formattedArray = `{${updatedLikes.json(',')}}`;
-        await db`UPDATE creations SET likes = ${formattedArray}::text[] WHERE id = ${id}`;
-        res.json({success:true , message})
-
-
-    } catch (error) {
-        res.json({success:false , error : error.message})
+    if (currentLikes.includes(userIdStr)) {
+      updatedLikes = currentLikes.filter((u) => u !== userIdStr);
+      message = "Creation unliked";
+    } else {
+      updatedLikes = [...currentLikes, userIdStr];
+      message = "Creation liked";
     }
-}
+
+    const formattedArray = `{${updatedLikes.join(",")}}`;
+
+    await db`UPDATE creations SET likes = ${formattedArray}::text[] WHERE id = ${id}`;
+
+    res.json({
+      success: true,
+      message,
+      likes: updatedLikes.length,
+      liked: updatedLikes.includes(userIdStr),
+      whoLiked: updatedLikes, // ✅ return full array
+    });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+};
