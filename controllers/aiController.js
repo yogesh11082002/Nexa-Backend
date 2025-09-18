@@ -312,7 +312,7 @@ export const generateImage = async (req, res) => {
     if (count >= 5) {
       return res.status(403).json({
         success: false,
-        error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
+        error: "⚠️ You’ve reached your 5-image limit as a Premium user.",
       });
     }
 
@@ -394,7 +394,7 @@ export const removeImageBackground = async (req, res) => {
 
     if (count >= 5) {
       console.error("Image limit reached");
-      return res.status(403).json({ success: false, error: "You’ve reached your 3-image limit." });
+      return res.status(403).json({ success: false, error: "You’ve reached your 5-image limit." });
     }
 
     // ✅ Upload to Cloudinary using upload_stream
@@ -478,7 +478,7 @@ export const removeImageObject = async (req, res) => {
       WHERE user_id = ${userId} AND type = 'image'
     `;
     if (count >= 5) {
-      return res.status(403).json({ success: false, error: "You’ve reached your 3-image limit." });
+      return res.status(403).json({ success: false, error: "You’ve reached your 5-image limit." });
     }
 
     // ✅ Upload image to Cloudinary using upload_stream
