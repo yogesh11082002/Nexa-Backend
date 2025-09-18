@@ -150,27 +150,40 @@ import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
 
+// ✅ Connect Cloudinary
 await connectCloudinary();
 
-// ✅ JSON parser
+// ✅ JSON middleware
 app.use(express.json());
 
-// ✅ CORS configuration
+// ✅ CORS options
 const corsOptions = {
   origin: [
-    "http://localhost:5173", // dev frontend
-    "https://nexa-ai-neon-yogesh.vercel.app", // deployed frontend
+    "http://localhost:5173", 
+    "https://nexa-ai-neon-yogesh.vercel.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// ✅ Handle preflight before any middleware (Clerk, etc.)
-app.options("*", cors(corsOptions));
+// 🚨 Handle preflight requests FIRST
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", corsOptions.origin.includes(req.headers.origin) ? req.headers.origin : "");
+  res.header("Access-Control-Allow-Methods", corsOptions.methods.join(","));
+  res.header("Access-Control-Allow-Headers", corsOptions.allowedHeaders.join(","));
+  res.header("Access-Control-Allow-Credentials", "true");
+  
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ✅ Apply cors middleware too
 app.use(cors(corsOptions));
 
-// ✅ Clerk middleware (after CORS)
+// ✅ Clerk middleware
 app.use(clerkMiddleware());
 
 // ✅ Debug logs
