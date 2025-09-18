@@ -150,16 +150,15 @@ import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
 
-// ✅ Connect Cloudinary
 await connectCloudinary();
 
-// ✅ JSON middleware
+// ✅ JSON parser
 app.use(express.json());
 
 // ✅ CORS configuration
 const corsOptions = {
   origin: [
-    "http://localhost:5173", // for local dev
+    "http://localhost:5173", // dev frontend
     "https://nexa-ai-neon-yogesh.vercel.app", // deployed frontend
   ],
   credentials: true,
@@ -167,13 +166,11 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// ✅ Apply CORS
+// ✅ Handle preflight before any middleware (Clerk, etc.)
+app.options("*", cors(corsOptions));
 app.use(cors(corsOptions));
 
-// ✅ Handle preflight (must be before routes)
-app.options("*", cors(corsOptions));
-
-// ✅ Clerk middleware
+// ✅ Clerk middleware (after CORS)
 app.use(clerkMiddleware());
 
 // ✅ Debug logs
@@ -186,7 +183,7 @@ if (process.env.NODE_ENV === "development") {
 
 // ✅ Public route
 app.get("/", (req, res) => {
-  res.send("Server is running");
+  res.send("Server is running ✅");
 });
 
 // ✅ Protected AI routes
