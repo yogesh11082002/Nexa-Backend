@@ -26,14 +26,14 @@
 
 import express from "express";
 import { generateArticle, generateBlogTitle, generateImage, removeImageBackground, removeImageObject, reviewResume } from "../controllers/aiController.js";
-// import upload from "../configs/multer.js";
+import upload from "../configs/multer.js";
 const aiRouter = express.Router();
 
 // ✅ No auth here, already applied in server.js
 aiRouter.post("/generate-article", generateArticle);
 aiRouter.post("/generate-blog-title", generateBlogTitle);
 aiRouter.post("/generate-image", generateImage);
-// aiRouter.post("/remove-background", upload.single("image"), removeImageBackground);
-// aiRouter.post("/remove-object",upload.single("image") , removeImageObject);
-// aiRouter.post("/resume-review",upload.single("resume") , reviewResume);
+aiRouter.post("/remove-background", upload.single("image"), removeImageBackground);
+aiRouter.post("/remove-object",upload.single("image") , removeImageObject);
+aiRouter.post("/resume-review",upload.single("resume") , reviewResume);
 export default aiRouter;
