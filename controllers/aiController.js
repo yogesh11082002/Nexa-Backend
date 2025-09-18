@@ -426,19 +426,31 @@ export const generateImage = async (req, res) => {
 
 export const removeImageBackground = async (req, res) => {
   try {
+    // ✅ Log auth info
+    console.log("req.auth:", req.auth);
+    console.log("req.plan:", req.plan);
+
     // ✅ Check auth
-    const { userId } = req.auth;
+    const { userId } = req.auth || {};
     const plan = req.plan;
 
-    if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
-    if (plan !== "premium")
+    if (!userId) {
+      console.error("Unauthorized: req.auth is missing");
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    if (plan !== "premium") {
+      console.error("Forbidden: Non-premium user");
       return res.status(403).json({ success: false, error: "Only for Premium users." });
+    }
 
     // ✅ Check uploaded file
+    console.log("req.file:", req.file);
     const image = req.file;
-    if (!image) return res.status(400).json({ success: false, error: "Missing image" });
-
-    console.log("Uploaded file:", image);
+    if (!image) {
+      console.error("No file received");
+      return res.status(400).json({ success: false, error: "No file received" });
+    }
 
     // ✅ Check user’s image count
     const [{ count }] = await db`
@@ -447,22 +459,26 @@ export const removeImageBackground = async (req, res) => {
       WHERE user_id = ${userId} AND type = 'image'
     `;
 
-    if (count >= 3)
+    if (count >= 3) {
+      console.error("Image limit reached");
       return res.status(403).json({ success: false, error: "You’ve reached your 3-image limit." });
+    }
 
-    // ✅ Upload to Cloudinary with background removal
+    // ✅ Upload to Cloudinary
     let secure_url;
     try {
+      console.log("Uploading to Cloudinary...");
       const result = await cloudinary.uploader.upload(image.path, {
         transformation: [{ effect: "background_removal" }],
       });
       secure_url = result.secure_url;
+      console.log("Cloudinary upload success:", secure_url);
     } catch (err) {
       console.error("Cloudinary upload error:", err);
       return res.status(500).json({ success: false, error: "Cloudinary upload failed" });
     }
 
-    // ✅ Save record to DB
+    // ✅ Save to DB
     await db`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')
@@ -471,14 +487,16 @@ export const removeImageBackground = async (req, res) => {
     // ✅ Delete local temp file
     fs.unlink(image.path, (err) => {
       if (err) console.error("Failed to delete temp file:", err);
+      else console.log("Temp file deleted:", image.path);
     });
 
-    // ✅ Respond to frontend
+    // ✅ Respond
     res.json({
       success: true,
       image: secure_url,
       remaining: 3 - (count + 1),
     });
+
   } catch (err) {
     console.error("❌ Image background removal error:", err.stack || err);
     res.status(500).json({ success: false, error: err.message });
