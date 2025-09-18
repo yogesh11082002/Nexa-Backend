@@ -309,7 +309,7 @@ export const generateImage = async (req, res) => {
       WHERE user_id = ${userId} AND type = 'image'
     `;
 
-    if (count >= 3) {
+    if (count >= 5) {
       return res.status(403).json({
         success: false,
         error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
@@ -351,7 +351,7 @@ export const generateImage = async (req, res) => {
     res.json({
       success: true,
       image: secure_url,
-      remaining: 3 - (count + 1), // 👈 tell frontend how many images left
+      remaining: 5 - (count + 1), // 👈 tell frontend how many images left
     });
   } catch (err) {
     console.error("❌ Image generation error:", err.response?.data || err);
