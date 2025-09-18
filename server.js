@@ -81,99 +81,61 @@
 // });
 
 
-// import "dotenv/config";
-// import express from "express";
-// import cors from "cors";
-// import { clerkMiddleware, requireAuth } from "@clerk/express";
-// import aiRouter from "./routes/aiRoutes.js";
-// import { auth } from "./middlewares/auth.js";
-// import connectCloudinary from "./configs/cloudinary.js";
-
-// const app = express();
-
-// await connectCloudinary();
-
-// // ✅ JSON middleware
-// app.use(express.json());
-
-// // ✅ CORS config
-// const corsOptions = {
-//   origin: "https://nexa-ai-neon-yogesh.vercel.app", // frontend URL
-//   credentials: true,
-//   methods: ["GET", "POST", "OPTIONS"],
-// };
-
-// // ✅ Apply CORS to all routes
-// app.use(cors(corsOptions));
-
-// // ✅ Handle preflight requests
-// app.use((req, res, next) => {
-//   if (req.method === "OPTIONS") {
-//     res.header("Access-Control-Allow-Origin", corsOptions.origin);
-//     res.header("Access-Control-Allow-Methods", corsOptions.methods.join(","));
-//     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-//     return res.sendStatus(200);
-//   }
-//   next();
-// });
-
-// // ✅ Clerk middleware
-// app.use(clerkMiddleware());
-
-// // ✅ Debug logs (optional)
-// if (process.env.NODE_ENV === "development") {
-//   app.use((req, res, next) => {
-//     console.log("➡️", req.method, req.url, "Auth:", req.auth);
-//     next();
-//   });
-// }
-
-// // ✅ Public route
-// app.get("/", (req, res) => {
-//   res.send("Server is running");
-// });
-
-// // ✅ Protected AI routes
-// // app.use("/api/ai", requireAuth(), auth, aiRouter);
-
-// app.use("/api/ai", requireAuth(), auth, aiRouter);
-
-// export default app;
-
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { clerkMiddleware } from "@clerk/express";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
 import aiRouter from "./routes/aiRoutes.js";
+import { auth } from "./middlewares/auth.js";
 import connectCloudinary from "./configs/cloudinary.js";
 
 const app = express();
+
 await connectCloudinary();
 
-const FRONTEND_URL = "https://nexa-ai-neon-yogesh.vercel.app";
-
-// ✅ JSON parser
+// ✅ JSON middleware
 app.use(express.json());
 
-// ✅ Global CORS middleware
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// ✅ CORS config
+const corsOptions = {
+  origin: "https://nexa-ai-neon-yogesh.vercel.app", // frontend URL
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+};
 
-// ✅ Preflight OPTIONS handler
-app.options("*", cors());
+// ✅ Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// ✅ Handle preflight requests
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    res.header("Access-Control-Allow-Origin", corsOptions.origin);
+    res.header("Access-Control-Allow-Methods", corsOptions.methods.join(","));
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // ✅ Clerk middleware
 app.use(clerkMiddleware());
 
-// ✅ Public route
-app.get("/", (req, res) => res.send("Server is running"));
+// ✅ Debug logs (optional)
+if (process.env.NODE_ENV === "development") {
+  app.use((req, res, next) => {
+    console.log("➡️", req.method, req.url, "Auth:", req.auth);
+    next();
+  });
+}
 
-// ✅ AI routes
-app.use("/api/ai", aiRouter);
+// ✅ Public route
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
+
+// ✅ Protected AI routes
+// app.use("/api/ai", requireAuth(), auth, aiRouter);
+
+app.use("/api/ai", requireAuth(), auth, aiRouter);
 
 export default app;
