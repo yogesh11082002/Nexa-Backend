@@ -427,47 +427,55 @@ export const generateImage = async (req, res) => {
 export const removeImageBackground = async (req, res) => {
   try {
     const { userId } = req.auth;
-    const file = req.file;
+    const file = req.file; // ← multer file
     const plan = req.plan;
 
-    if (!userId) return res.status(401).json({ success: false, error: "Unauthorized" });
-    if (!file) return res.status(400).json({ success: false, error: "Missing image" });
-    if (plan !== "premium") return res.status(403).json({ success: false, error: "Only Premium users" });
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+    if (!file) {
+      return res.status(400).json({ success: false, error: "Missing image" });
+    }
+    if (plan !== "premium") {
+      return res.status(403).json({ success: false, error: "Only Premium users" });
+    }
 
-    // Check usage limit
+    // ✅ Count how many images this user already generated
     const [{ count }] = await db`
       SELECT COUNT(*)::int AS count
       FROM creations
       WHERE user_id = ${userId} AND type = 'image'
     `;
-    if (count >= 3) return res.status(403).json({ success: false, error: "3-image limit reached" });
 
-    // Upload to Cloudinary
-    let secure_url;
-    try {
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: "user_uploads",
-        transformation: [{ background_removal: "cloudinary_ai" }],
+    if (count >= 3) {
+      return res.status(403).json({
+        success: false,
+        error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
       });
-      secure_url = result.secure_url;
-    } catch (err) {
-      console.error("Cloudinary upload failed:", err);
-      return res.status(500).json({ success: false, error: "Cloudinary upload failed" });
     }
 
-    // Delete local file
+    // ✅ Upload to Cloudinary
+    const { secure_url } = await cloudinary.uploader.upload(file.path, {
+      background_removal: "cloudinary_ai", // ← correct parameter
+      folder: "user_uploads",
+    });
+
+    // Optional: delete local file to save space
     fs.unlinkSync(file.path);
 
-    // Save in DB
+    // ✅ Save to DB
     await db`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')
     `;
 
-    res.json({ success: true, image: secure_url, remaining: 3 - (count + 1) });
-
+    res.json({
+      success: true,
+      image: secure_url,
+      remaining: 3 - (count + 1),
+    });
   } catch (err) {
-    console.error("Background removal error:", err);
+    console.error("❌ Background removal error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };

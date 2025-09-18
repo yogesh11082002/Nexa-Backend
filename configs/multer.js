@@ -6,15 +6,11 @@
 
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 
-// Ensure uploads folder exists
-const uploadDir = "uploads";
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
+// Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, "uploads/"); // folder where files will be saved
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -22,5 +18,7 @@ const storage = multer.diskStorage({
   },
 });
 
+// Multer middleware
 const upload = multer({ storage });
+
 export default upload;
