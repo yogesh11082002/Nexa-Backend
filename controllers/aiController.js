@@ -361,23 +361,83 @@ export const generateImage = async (req, res) => {
 
 
 
+
+// export const removeImageBackground = async (req, res) => {
+//   try {
+//     const { userId } = req.auth;
+//     const { image } = req.file;
+//     const plan = req.plan;
+
+//     if (!userId) {
+//       return res.status(401).json({ success: false, error: "Unauthorized" });
+//     }
+//     if (!image) {
+//       return res.json({ success: false, error: "Missing image" });
+//     }
+//     if (plan !== "premium") {
+//       return res.status(403).json({
+//         success: false,
+//         error: "Only for Premium users. Upgrade to premium.",
+//       });
+//     }
+
+//     // ✅ Count how many images this user already generated
+//     const [{ count }] = await db`
+//       SELECT COUNT(*)::int AS count
+//       FROM creations
+//       WHERE user_id = ${userId} AND type = 'image'
+//     `;
+
+//     if (count >= 3) {
+//       return res.status(403).json({
+//         success: false,
+//         error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
+//       });
+//     }
+
+   
+
+//     // Upload to Cloudinary
+//     const { secure_url } = await cloudinary.uploader.upload(image.path, { 
+//       transformation :[
+//          {
+//            effect: "background_removal",
+//            background_removal: "remove_the_background", 
+//       }
+//    ] });
+
+//     // ✅ Save to DB
+//     await db`
+//       INSERT INTO creations (user_id, prompt, content, type)
+//       VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')
+//     `;
+
+//     res.json({
+//       success: true,
+//       image: secure_url,
+//       remaining: 3 - (count + 1), // 👈 tell frontend how many images left
+//     });
+//   } catch (err) {
+//     console.error("❌ Image generation error:", err.response?.data || err);
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// };
+
+
 export const removeImageBackground = async (req, res) => {
   try {
     const { userId } = req.auth;
-    const { image } = req.file;
+    const file = req.file; // ← multer file
     const plan = req.plan;
 
     if (!userId) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
-    if (!image) {
-      return res.json({ success: false, error: "Missing image" });
+    if (!file) {
+      return res.status(400).json({ success: false, error: "Missing image" });
     }
     if (plan !== "premium") {
-      return res.status(403).json({
-        success: false,
-        error: "Only for Premium users. Upgrade to premium.",
-      });
+      return res.status(403).json({ success: false, error: "Only Premium users" });
     }
 
     // ✅ Count how many images this user already generated
@@ -394,16 +454,14 @@ export const removeImageBackground = async (req, res) => {
       });
     }
 
-   
+    // ✅ Upload to Cloudinary
+    const { secure_url } = await cloudinary.uploader.upload(file.path, {
+      background_removal: "cloudinary_ai", // ← correct parameter
+      folder: "user_uploads",
+    });
 
-    // Upload to Cloudinary
-    const { secure_url } = await cloudinary.uploader.upload(image.path, { 
-      transformation :[
-         {
-           effect: "background_removal",
-           background_removal: "remove_the_background", 
-      }
-   ] });
+    // Optional: delete local file to save space
+    fs.unlinkSync(file.path);
 
     // ✅ Save to DB
     await db`
@@ -414,14 +472,13 @@ export const removeImageBackground = async (req, res) => {
     res.json({
       success: true,
       image: secure_url,
-      remaining: 3 - (count + 1), // 👈 tell frontend how many images left
+      remaining: 3 - (count + 1),
     });
   } catch (err) {
-    console.error("❌ Image generation error:", err.response?.data || err);
+    console.error("❌ Background removal error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
 
 
 export const removeImageObject = async (req, res) => {
@@ -553,120 +610,3 @@ export const reviewResume = async (req, res) => {
   }
 };
 
-
-
-
-// export const removeImageBackground = async (req, res) => {
-//   try {
-//     const { userId } = req.auth;
-//   const image = req.file;
-//     const plan = req.plan;
-
-//     if (!userId) {
-//       return res.status(401).json({ success: false, error: "Unauthorized" });
-//     }
-//     if (!image) {
-//       return res.json({ success: false, error: "Missing image" });
-//     }
-//     if (plan !== "premium") {
-//       return res.status(403).json({
-//         success: false,
-//         error: "Only for Premium users. Upgrade to premium.",
-//       });
-//     }
-
-//     // ✅ Count background removals only
-//     const [{ count }] = await db`
-//       SELECT COUNT(*)::int AS count
-//       FROM creations
-//       WHERE user_id = ${userId} AND type = 'bg-remove'
-//     `;
-
-//     if (count >= 3) {
-//       return res.status(403).json({
-//         success: false,
-//         error: "⚠️ You’ve reached your 3-background-removal limit.",
-//       });
-//     }
-
-//     // Upload to Cloudinary
-//     const { secure_url } = await cloudinary.uploader.upload(image.path, { 
-//       transformation: [{ effect: "background_removal", background_removal: "remove_the_background" }] 
-//     });
-
-//     // Save to DB with type 'bg-remove'
-//     await db`
-//       INSERT INTO creations (user_id, prompt, content, type)
-//       VALUES (${userId}, 'Remove background from image', ${secure_url}, 'bg-remove')
-//     `;
-
-//     res.json({
-//       success: true,
-//       image: secure_url,
-//       remaining: 3 - (count + 1),
-//     });
-//   } catch (err) {
-//     console.error("❌ Background removal error:", err.response?.data || err);
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// };
-
-
-// export const removeImageObject = async (req, res) => {
-//   try {
-//     const { userId } = req.auth;
-//     const { object } = req.body;
-//     const image = req.file;
-
-//     const plan = req.plan;
-
-//     if (!userId) {
-//       return res.status(401).json({ success: false, error: "Unauthorized" });
-//     }
-//     if (!image) {
-//       return res.json({ success: false, error: "Missing image" });
-//     }
-//     if (plan !== "premium") {
-//       return res.status(403).json({
-//         success: false,
-//         error: "Only for Premium users. Upgrade to premium.",
-//       });
-//     }
-
-//     // ✅ Count object removals only
-//     const [{ count }] = await db`
-//       SELECT COUNT(*)::int AS count
-//       FROM creations
-//       WHERE user_id = ${userId} AND type = 'object-remove'
-//     `;
-
-//     if (count >= 3) {
-//       return res.status(403).json({
-//         success: false,
-//         error: "⚠️ You’ve reached your 3-object-removal limit.",
-//       });
-//     }
-
-//     // Upload to Cloudinary
-//     const { public_id } = await cloudinary.uploader.upload(image.path);
-//     const imageUrl = cloudinary.url(public_id, {
-//       transformation: [{ effect: `gen_remove:${object}` }],
-//       resource_type: "image",
-//     });
-
-//     // Save to DB with type 'object-remove'
-//     await db`
-//       INSERT INTO creations (user_id, prompt, content, type)
-//       VALUES (${userId}, ${`Remove ${object} from image`}, ${imageUrl}, 'object-remove')
-//     `;
-
-//     res.json({
-//       success: true,
-//       image: imageUrl,
-//       remaining: 3 - (count + 1),
-//     });
-//   } catch (err) {
-//     console.error("❌ Object removal error:", err.response?.data || err);
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// };
