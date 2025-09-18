@@ -506,132 +506,270 @@ export const removeImageBackground = async (req, res) => {
 
 
 
+// export const removeImageObject = async (req, res) => {
+//   try {
+//     const { userId } = req.auth;
+//     const { object } = req.body;
+//     const { image } = req.file;
+//     const plan = req.plan;
+
+//     if (!userId) {
+//       return res.status(401).json({ success: false, error: "Unauthorized" });
+//     }
+//     if (!image) {
+//       return res.json({ success: false, error: "Missing image" });
+//     }
+//     if (plan !== "premium") {
+//       return res.status(403).json({
+//         success: false,
+//         error: "Only for Premium users. Upgrade to premium.",
+//       });
+//     }
+
+//     // ✅ Count how many images this user already generated
+//     const [{ count }] = await db`
+//       SELECT COUNT(*)::int AS count
+//       FROM creations
+//       WHERE user_id = ${userId} AND type = 'image'
+//     `;
+
+//     if (count >= 3) {
+//       return res.status(403).json({
+//         success: false,
+//         error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
+//       });
+//     }
+
+   
+
+//     // Upload to Cloudinary
+//     const { public_id } = await cloudinary.uploader.upload(image.path );
+
+    
+    
+//      const imageUrl  =cloudinary.url(public_id, {
+//       transformation: [
+//         {
+//           effect: `gen_remove:${object}`, // Specify the object to remove
+         
+//         },
+//       ],
+//       resource_type: "image",
+//     });
+
+//     // ✅ Save to DB
+//     await db`
+//       INSERT INTO creations (user_id, prompt, content, type)
+//       VALUES (${userId}, ${` Remove  ${object} from image`}, ${imageUrl}, 'image')
+//     `;
+
+//     res.json({
+//       success: true,
+//       image: imageUrl,
+//       remaining: 3 - (count + 1), // 👈 tell frontend how many images left
+//     });
+//   } catch (err) {
+//     console.error("❌ Image generation error:", err.response?.data || err);
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// };
+
 export const removeImageObject = async (req, res) => {
   try {
-    const { userId } = req.auth;
-    const { object } = req.body;
-    const { image } = req.file;
+    console.log("=== REMOVE OBJECT FROM IMAGE ===");
+    console.log("req.auth:", req.auth);
+    console.log("req.plan:", req.plan);
+    console.log("req.body.object:", req.body.object);
+    console.log("req.file:", req.file);
+
+    const { userId } = req.auth || {};
     const plan = req.plan;
+    const objectToRemove = req.body.object;
+    const imageFile = req.file;
 
     if (!userId) {
+      console.error("Unauthorized access");
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
-    if (!image) {
-      return res.json({ success: false, error: "Missing image" });
-    }
     if (plan !== "premium") {
-      return res.status(403).json({
-        success: false,
-        error: "Only for Premium users. Upgrade to premium.",
-      });
+      console.error("Non-premium user tried to remove object");
+      return res.status(403).json({ success: false, error: "Premium required" });
+    }
+    if (!imageFile) {
+      console.error("No file uploaded");
+      return res.status(400).json({ success: false, error: "No file received" });
+    }
+    if (!objectToRemove) {
+      console.error("No object specified");
+      return res.status(400).json({ success: false, error: "Missing object to remove" });
     }
 
-    // ✅ Count how many images this user already generated
+    // ✅ Check image limit
     const [{ count }] = await db`
       SELECT COUNT(*)::int AS count
       FROM creations
       WHERE user_id = ${userId} AND type = 'image'
     `;
-
     if (count >= 3) {
-      return res.status(403).json({
-        success: false,
-        error: "⚠️ You’ve reached your 3-image limit as a Premium user.",
-      });
+      return res.status(403).json({ success: false, error: "You’ve reached your 3-image limit." });
     }
 
-   
+    // ✅ Upload image to Cloudinary using upload_stream
+    const streamUpload = (buffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {},
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload_stream error:", error);
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        );
+        stream.end(buffer);
+      });
+    };
 
-    // Upload to Cloudinary
-    const { public_id } = await cloudinary.uploader.upload(image.path );
+    const uploadResult = await streamUpload(imageFile.buffer);
 
-    
-    
-     const imageUrl  =cloudinary.url(public_id, {
+    // ✅ Generate URL with object removal transformation
+    const imageUrl = cloudinary.url(uploadResult.public_id, {
       transformation: [
-        {
-          effect: `gen_remove:${object}`, // Specify the object to remove
-         
-        },
+        { effect: `gen_remove:${objectToRemove}` },
       ],
       resource_type: "image",
     });
+    console.log("Cloudinary transformed image URL:", imageUrl);
 
     // ✅ Save to DB
     await db`
       INSERT INTO creations (user_id, prompt, content, type)
-      VALUES (${userId}, ${` Remove  ${object} from image`}, ${imageUrl}, 'image')
+      VALUES (${userId}, ${`Remove ${objectToRemove} from image`}, ${imageUrl}, 'image')
     `;
 
     res.json({
       success: true,
       image: imageUrl,
-      remaining: 3 - (count + 1), // 👈 tell frontend how many images left
+      remaining: 3 - (count + 1),
     });
+
   } catch (err) {
-    console.error("❌ Image generation error:", err.response?.data || err);
+    console.error("❌ removeImageObject error:", err.stack || err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
 
 
+// export const reviewResume = async (req, res) => {
+//   try {
+//     const { userId } = req.auth;
+//     const resume = req.file;
+//     const plan = req.plan;
+
+//     if (!userId) {
+//       return res.status(401).json({ success: false, error: "Unauthorized" });
+//     }
+//     if (!resume) {
+//       return res.json({ success: false, error: "Missing resume" });
+//     }
+//     if (plan !== "premium") {
+//       return res.status(403).json({
+//         success: false,
+//         error: "Only for Premium users. Upgrade to premium.",
+//       });
+//     }
+
+//     if(resume.size > 5*1024*1024){
+//       res.json({success:false, message:"File size is too Big"});
+//     }
+
+//     const dataBuffer = fs.readFileSync(resume.path)
+
+//     const pdfData = await pdf(dataBuffer);
+
+//     const prompt =`Review the following resume and  provide constructive feedback  on its strengths , weekness and areas of improvement. Resume content :\n\n ${pdfData.text}`
+
+   
+//     const result = await model.generateContent(prompt);
+
+//     console.log("🔎 Gemini raw result:", JSON.stringify(result, null, 2));
+
+//     const text = extractText(result);
+
+//     if (!text) {
+//       return res
+//         .status(502)
+//         .json({ success: false, error: "⚠️ No article received from API." });
+//     }
+
+
+    
+//     // ✅ Save to DB
+//     await db`
+//       INSERT INTO creations (user_id, prompt, content, type)
+//       VALUES (${userId}, ${prompt}, ${text}, 'resume-review')
+//     `;
+
+//     res.json({success:true , content})
+  
+//   } catch (err) {
+//     console.error("❌ Image generation error:", err.response?.data || err);
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// };
+
+
 
 export const reviewResume = async (req, res) => {
   try {
-    const { userId } = req.auth;
-    const resume = req.file;
+    console.log("=== REVIEW RESUME ===");
+    console.log("req.auth:", req.auth);
+    console.log("req.plan:", req.plan);
+    console.log("req.file:", req.file);
+
+    const { userId } = req.auth || {};
     const plan = req.plan;
+    const resumeFile = req.file;
 
     if (!userId) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
-    if (!resume) {
-      return res.json({ success: false, error: "Missing resume" });
+    if (!resumeFile) {
+      return res.status(400).json({ success: false, error: "Missing resume file" });
     }
     if (plan !== "premium") {
-      return res.status(403).json({
-        success: false,
-        error: "Only for Premium users. Upgrade to premium.",
-      });
+      return res.status(403).json({ success: false, error: "Premium required" });
+    }
+    if (resumeFile.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: "File size too large" });
     }
 
-    if(resume.size > 5*1024*1024){
-      res.json({success:false, message:"File size is too Big"});
-    }
+    // ✅ Parse PDF from buffer
+    const pdfData = await pdf(resumeFile.buffer);
+    const prompt = `Review the following resume and provide constructive feedback on strengths, weaknesses, and areas of improvement:\n\n${pdfData.text}`;
 
-    const dataBuffer = fs.readFileSync(resume.path)
-
-    const pdfData = await pdf(dataBuffer);
-
-    const prompt =`Review the following resume and  provide constructive feedback  on its strengths , weekness and areas of improvement. Resume content :\n\n ${pdfData.text}`
-
-   
+    // ✅ Call your AI model (replace model.generateContent with actual method)
     const result = await model.generateContent(prompt);
+    console.log("Raw AI result:", result);
 
-    console.log("🔎 Gemini raw result:", JSON.stringify(result, null, 2));
-
-    const text = extractText(result);
-
+    const text = extractText(result); // your helper function
     if (!text) {
-      return res
-        .status(502)
-        .json({ success: false, error: "⚠️ No article received from API." });
+      return res.status(502).json({ success: false, error: "No response from AI" });
     }
 
-
-    
     // ✅ Save to DB
     await db`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, ${prompt}, ${text}, 'resume-review')
     `;
 
-    res.json({success:true , content})
-  
+    res.json({ success: true, content: text });
+
   } catch (err) {
-    console.error("❌ Image generation error:", err.response?.data || err);
+    console.error("❌ reviewResume error:", err.stack || err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
